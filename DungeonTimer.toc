@@ -6,6 +6,8 @@
 ## X-Category: Misc
 ## SavedVariables: DungeonTimerDB
 ## OptionalDeps: tekDebug, tekErr
+## X-License: Apache-2.0
+
 ## LoadManagers: AddonLoader
 ## X-LoadOn-Always: delayed
 

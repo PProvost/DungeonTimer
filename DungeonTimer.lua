@@ -1,3 +1,19 @@
+--[[
+Copyright 2009 Peter Provost (Quaiche of Dragonblight)
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+]]
+
 local BossIDs = {
 	-- Lich King 5-mans
 	[26861] = "King Ymiron", -- Utgarde Pinnacle
@@ -18,18 +34,25 @@ local BossIDs = {
 	[37226] = "The Lich King" -- Halls of Reflection (no idea if this shows up as a UNIT_DEATH or not)
 }
 
-local L = setmetatable({}, {__index=function(t,i) return i end})
-local defaults, db = {
-	characters = {}, -- one table per character, fully-qualified with realm name
-	best = {}, -- one entry per instance, listing the character-realm with the best time
-}
-
+-- Debug stuff
 local function Print(...) print("|cFF33FF99DungeonTimer|r:", ...) end
 local debugf = tekDebug and tekDebug:GetFrame("DungeonTimer")
 local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end end
 
+-- Locals
 local timerStarted = nil
+local L = setmetatable({}, {__index=function(t,i) return i end})
+local defaults, db = {}
 
+-- Since we're using Stopwatch right now, this function will ensure
+-- it is loaded.
+local function EnsureTimeManagerLoaded()
+	if not IsAddOnLoaded("Blizzard_TimeManager") then
+		LoadAddOn("Blizzard_TimeManager")
+	end
+end
+
+-- Addon frame and Initialization
 local f = CreateFrame("frame")
 f:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
 f:RegisterEvent("ADDON_LOADED")
@@ -41,9 +64,8 @@ function f:ADDON_LOADED(event, addon)
 	db = DungeonTimerDB
 
 	-- Do anything you need to do after addon has loaded
-	f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 
-	LibStub("tekKonfig-AboutPanel").new("DungeonTimer", "DungeonTimer") -- Make first arg nil if no parent config panel
+	LibStub("tekKonfig-AboutPanel").new(nil, "DungeonTimer") -- Make first arg nil if no parent config panel
 	self:UnregisterEvent("ADDON_LOADED")
 	self.ADDON_LOADED = nil
 	if IsLoggedIn() then self:PLAYER_LOGIN() else self:RegisterEvent("PLAYER_LOGIN") end
@@ -53,16 +75,11 @@ end
 function f:PLAYER_LOGIN()
 	self:RegisterEvent("PLAYER_LOGOUT")
 
+	f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 	self:ZONE_CHANGED_NEW_AREA()
 
 	self:UnregisterEvent("PLAYER_LOGIN")
 	self.PLAYER_LOGIN = nil
-end
-
-local function EnsureTimeManagerLoaded()
-	if not IsAddOnLoaded("Blizzard_TimeManager") then
-		LoadAddOn("Blizzard_TimeManager")
-	end
 end
 
 function f:ZONE_CHANGED_NEW_AREA()
@@ -100,6 +117,7 @@ function f:PLAYER_REGEN_DISABLED()
 	self:UnregisterEvent("PLAYER_REGEN_DISABLED")
 end
 
+-- Boss trap to see when we're done with the current instance
 function f:COMBAT_LOG_EVENT_UNFILTERED(event, ...)
 	local timestamp, type, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags = select(1, ...)
 	if type=="UNIT_DIED" then
@@ -114,7 +132,6 @@ end
 
 function f:PLAYER_LOGOUT()
 	for i,v in pairs(defaults) do if db[i] == v then db[i] = nil end end
-
 	-- Do anything you need to do as the player logs out
 end
 

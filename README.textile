@@ -1,7 +1,21 @@
 h2. Overview
 
-Blah blah blah
+DungeonTimer is a simple addon for keeping track of your times running 5-man dungeon instance.
+Unlike similar addons, this one does not require you to use the "Looking for Dungeon" (LFD)
+tool in game.
+
+The timer is started when you first enter combat and is stopped when you kill the final boss
+of the instance.
+
+TODO:
+* Replace the stopwatch-based timer with an internal one
+* Track best and average times for each instance seen
+* Add a LDB plugin with a useful tooltip
+* Add support for pre-LK instances
 
 h2. Bugs and Suggestions
 
-Please post any bugs and suggestions on the CurseForge project page. Thanks!
+Please post any bugs and suggestions on the github issue tracker:
+
+"http://github.com/PProvost/DungeonTimer/issues":http://github.com/PProvost/DungeonTimer/issues
+

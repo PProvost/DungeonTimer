@@ -34,6 +34,12 @@ local BossIDs = {
 	[37226] = "The Lich King" -- Halls of Reflection (no idea if this shows up as a UNIT_DEATH or not)
 }
 
+-- TODO: Figure out a better way of dealing with bosses that don't die
+-- like Mal'ganis in CoS and The Lich King in HoR
+local DefeatEmotes = {
+	["Your journey has just begun"] = "Ma'ganis",
+}
+
 -- Debug stuff
 local function Print(...) print("|cFF33FF99DungeonTimer|r:", ...) end
 local debugf = tekDebug and tekDebug:GetFrame("DungeonTimer")
@@ -41,6 +47,7 @@ local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", tos
 
 -- Locals
 local timerStarted = nil
+local startTime = 0
 local L = setmetatable({}, {__index=function(t,i) return i end})
 local defaults, db = {}
 
@@ -51,6 +58,42 @@ local function EnsureTimeManagerLoaded()
 		LoadAddOn("Blizzard_TimeManager")
 	end
 end
+
+local function formatTimeSpan(totalSeconds)
+	local secs = totalSeconds % 60
+	local mins = math.floor(totalSeconds / 60)
+	local hours = math.floor(totalSeconds / 3600)
+	if hours > 0 then 
+		return string.format("%d hours, %d mins, %d secs", hours, mins, secs)
+	else
+		return string.format("%d mins, %d secs", mins, secs)
+	end
+end
+
+local function StartTimer()
+	timerStarted = true
+	startTime = time()
+
+	Print("Timer started!")
+
+	EnsureTimeManagerLoaded()
+	if not StopwatchFrame:IsVisible() then
+		Stopwatch_Toggle()
+	end
+	Stopwatch_Clear()
+	Stopwatch_Play()
+end
+
+local function StopTimer()
+	local elapsedTime = time() - startTime
+
+	Print("Elapsed time: "..formatTimeSpan(elapsedTime))
+	Stopwatch_Pause()
+
+	startTime = 0
+	timerStarted = nil
+end
+
 
 -- Addon frame and Initialization
 local f = CreateFrame("frame")
@@ -83,37 +126,25 @@ function f:PLAYER_LOGIN()
 end
 
 function f:ZONE_CHANGED_NEW_AREA()
-	--TODO: If we're already started, we shoud not do this
+	-- If we're already timing, bail
 	if timerStarted then return end
 
 	local zone = GetRealZoneText()
-	if zone==nil or zone=="" then
-		-- TODO: try again in 5 sec
-		return
-	end
+	if zone==nil or zone=="" then return  end -- TODO: try again in 5 sec
 
-	local _,type,difficulty,difficultyName = GetInstanceInfo()
+	local _, type, difficulty, difficultyName = GetInstanceInfo()
 	if type == "party" then
 		Print("You have entered " .. difficultyName .. " " .. zone .. ".")
 		Print("Timer will start as soon as you enter combat.")
-		EnsureTimeManagerLoaded()
 		self:RegisterEvent("PLAYER_REGEN_DISABLED")
-		self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	end
 end
 
 -- This will fire when we enter combat for the first time
 -- effectively signalling the start of an instance.
 function f:PLAYER_REGEN_DISABLED()
-	timerStarted = true
-	Print("Timer started!")
-
-	if not StopwatchFrame:IsVisible() then
-		Stopwatch_Toggle()
-	end
-	Stopwatch_Clear()
-	Stopwatch_Play()
-
+	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	StartTimer()
 	self:UnregisterEvent("PLAYER_REGEN_DISABLED")
 end
 
@@ -124,8 +155,7 @@ function f:COMBAT_LOG_EVENT_UNFILTERED(event, ...)
 		local id = tonumber((destGUID):sub(-12, -7), 16)
 		if BossIDs[id] then
 			Print("Final boss dead! " ..tostring(destName))
-			Stopwatch_Pause()
-			timerStarted = nil
+			StopTimer()
 		end
 	end
 end

@@ -14,30 +14,23 @@ Copyright 2009 Peter Provost (Quaiche of Dragonblight)
    limitations under the License.
 ]]
 
-local BossIDs = {
-	-- Lich King 5-mans
-	[26861] = "King Ymiron", -- Utgarde Pinnacle
-	[23954] = "Ingvar the Plunderer", -- Utgarde Keep
-	[29306] = "Gal'darah", -- Gundrak
-	[26632] = "The Prophet Tharon'ja", -- Drak'Tharon Keep
-	[29120] = "Anub'arak", -- Azjol-Nerub
-	[29311] = "Herald Volazj",-- Ahn'kahet: The Old Kingdom
-	[26723] = "Keristrasza", -- The Nexus
-	[27656] = "Ley-Guardian Eregos", -- The Oculus
-	[31134] = "Cyanigosa", -- Violet Hold
-	[27978] = "Sjonnir The Ironshaper", -- Halls of Stone
-	[28586] = "Loken", -- Halls of Lightning
-	[26533] = "Mal'Ganis", -- The Culling of Stratholme
-	[35451] = "The Black Knight", -- Trial of Champions
-	[36502] = "Devourer of Souls", -- Forge of Souls
-	[36658] = "Scourgelord Tyrannus", -- Pit of Saron  (note this might be 36661 instead of 36658)
-	[37226] = "The Lich King" -- Halls of Reflection (no idea if this shows up as a UNIT_DEATH or not)
-}
-
--- TODO: Figure out a better way of dealing with bosses that don't die
--- like Mal'ganis in CoS and The Lich King in HoR
-local DefeatEmotes = {
-	["Your journey has just begun"] = "Ma'ganis",
+local instanceInfo = {
+	["Ahn'kahet: The Old Kingdom"] 	= { type="bosskill", id=29311, },
+	["Azjol-Nerub"] 								= { type="bosskill", id=29120, },
+	["Drak'Tharon Keep"] 						= { type="bosskill", id=26632, },
+	["Gundrak"] 										= { type="bosskill", id=29306, },
+	["Halls of Lightning"] 					= { type="bosskill", id=28923 },
+	["Halls of Reflection"] 				= { type="emote", text="Nowhere to run... You're mine now!" },
+	["Halls of Stone"] 							= { type="bosskill", id=27978 },
+	["Pit of Saron"] 								= { type="bosskill", id=36658 },
+	["The Culling of Stratholme"] 	= { type="emote", text="Your journey has just begun" },
+	["The Forge of Souls"] 					= { type="bosskill", id=36502 },
+	["The Nexus"] 									= { type="bosskill", id=26723 },
+	["The Oculus"] 									= { type="bosskill", id=27656 },
+	["The Violet Hold"] 						= { type="bosskill", id=31134 },
+	["Trial of the Champion"] 			= { type="emote", text="No! I must not fail... again..." },
+	["Utgarde Keep"] 								= { type="emote", text="No! I can do... better! I can..." },
+	["Utgarde Pinnacle"] 						= { type="bosskill", id=26861 },
 }
 
 -- Debug stuff
@@ -48,18 +41,18 @@ local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", tos
 -- Locals
 local timerStarted = nil
 local startTime = 0
-local L = setmetatable({}, {__index=function(t,i) return i end})
-local defaults, db = {}
+local timerZone
+local db
 
--- Since we're using Stopwatch right now, this function will ensure
--- it is loaded.
-local function EnsureTimeManagerLoaded()
-	if not IsAddOnLoaded("Blizzard_TimeManager") then
-		LoadAddOn("Blizzard_TimeManager")
-	end
-end
+-- Addon frame and Initialization
+local f = CreateFrame("frame")
+f:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
+f:RegisterEvent("ADDON_LOADED")
 
-local function formatTimeSpan(totalSeconds)
+local ldb = LibStub:GetLibrary("LibDataBroker-1.1")
+local dataobj = ldb:GetDataObjectByName("DungeonTimer") or ldb:NewDataObject("DungeonTimer", {type = "data source", icon = "Interface\\Icons\\INV_Misc_Head_ClockworkGnome_01", text="0:00" })
+
+local function FormatTimeSpanLong(totalSeconds)
 	local secs = totalSeconds % 60
 	local mins = math.floor(totalSeconds / 60)
 	local hours = math.floor(totalSeconds / 3600)
@@ -70,35 +63,17 @@ local function formatTimeSpan(totalSeconds)
 	end
 end
 
-local function StartTimer()
-	timerStarted = true
-	startTime = time()
-
-	Print("Timer started!")
-
-	EnsureTimeManagerLoaded()
-	if not StopwatchFrame:IsVisible() then
-		Stopwatch_Toggle()
+local function FormatTimeSpanShort(totalSeconds)
+	local secs = totalSeconds % 60
+	local mins = math.floor(totalSeconds / 60)
+	local hours = math.floor(totalSeconds / 3600)
+	if hours > 0 then 
+		return string.format("%d:%02d:%02d", hours, mins, secs)
+	else
+		return string.format("%d:%02d", mins, secs)
 	end
-	Stopwatch_Clear()
-	Stopwatch_Play()
 end
 
-local function StopTimer()
-	local elapsedTime = time() - startTime
-
-	Print("Elapsed time: "..formatTimeSpan(elapsedTime))
-	Stopwatch_Pause()
-
-	startTime = 0
-	timerStarted = nil
-end
-
-
--- Addon frame and Initialization
-local f = CreateFrame("frame")
-f:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
-f:RegisterEvent("ADDON_LOADED")
 
 function f:ADDON_LOADED(event, addon)
 	if addon:lower() ~= "dungeontimer" then return end
@@ -134,18 +109,65 @@ function f:ZONE_CHANGED_NEW_AREA()
 
 	local _, type, difficulty, difficultyName = GetInstanceInfo()
 	if type == "party" then
-		Print("You have entered " .. difficultyName .. " " .. zone .. ".")
-		Print("Timer will start as soon as you enter combat.")
-		self:RegisterEvent("PLAYER_REGEN_DISABLED")
+		timerZone = zone
+		if instanceInfo[timerZone] then
+			Print("You have entered " .. difficultyName .. " " .. zone .. ".")
+			Print("Timer will start as soon as you enter combat.")
+			dataobj.text = "0:00"
+			self:RegisterEvent("PLAYER_REGEN_DISABLED")
+		else
+			Print("Unknown instance! Timer disabled")
+		end
+	end
+end
+
+local total = 0
+function f:OnUpdate(elapsed)
+	total = total + elapsed
+	if total >= 1 then
+		dataobj.text = FormatTimeSpanShort(time() - startTime) -- TODO: better format than this
+		total = 0
 	end
 end
 
 -- This will fire when we enter combat for the first time
 -- effectively signalling the start of an instance.
 function f:PLAYER_REGEN_DISABLED()
-	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	StartTimer()
 	self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+
+	-- Start the timer!
+	timerStarted = true
+	startTime = time()
+	Print("Timer started!")
+
+	-- Enable the LDB text update
+	self:SetScript("OnUpdate", self.OnUpdate)
+
+	if instanceInfo[timerZone].type == "bosskill" then
+		-- Watch the combat log for the death of the boss
+		self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	elseif instanceInfo[timerZone].type == "emote" then
+		-- This one is for emotes
+		self:RegisterEvent("CHAT_MSG_MONSTER_YELL")
+	else
+		Print("Unknown instance conclusion type. Please contact the addon developer.")
+	end
+end
+
+function f:StopTimer()
+	local elapsedTime = time() - startTime
+
+	self:SetScript("OnUpdate", nil)
+
+	local name, type, difficulty, difficultyName = GetInstanceInfo()
+	local key = name.." - "..difficultyName
+	if not db[key] or elapsedTime < db[key] then
+		db[key] = elapsedTime
+	end
+	Print("Elapsed time: " .. FormatTimeSpanLong(elapsedTime))
+
+	timerStarted = nil
+	timerZone = nil
 end
 
 -- Boss trap to see when we're done with the current instance
@@ -153,26 +175,39 @@ function f:COMBAT_LOG_EVENT_UNFILTERED(event, ...)
 	local timestamp, type, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags = select(1, ...)
 	if type=="UNIT_DIED" then
 		local id = tonumber((destGUID):sub(-12, -7), 16)
-		if BossIDs[id] then
+		if instanceInfo[timerZone].id == id then
 			Print("Final boss dead! " ..tostring(destName))
-			StopTimer()
+			self:StopTimer()
+			self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 		end
 	end
 end
 
-function f:PLAYER_LOGOUT()
-	for i,v in pairs(defaults) do if db[i] == v then db[i] = nil end end
-	-- Do anything you need to do as the player logs out
+-- Monster yell trap to see when we're done with the current instance
+function f:CHAT_MSG_MONSTER_YELL(event, msg, ...)
+	if instanceInfo[timerZone].text == msg then
+		Print("Final boss defeated!")
+		self:StopTimer()
+		self:UnregisterEvent("CHAT_MSG_MONSTER_YELL")
+	end
 end
 
---[[
-SLASH_DUNGEONTIMER1 = "/dt"
+SLASH_DUNGEONTIMER1 = "/dtimer"
 SlashCmdList.DUNGEONTIMER = function(msg)
-	-- Do crap here
+	if timerStarted then
+		local elapsedTime = time() - startTime
+		Print(timerZone.." elapsed time: " .. FormatTimeSpanLong(elapsedTime))
+	else
+		Print("Timer not started!")
+	end
 end
 
-local ldb = LibStub:GetLibrary("LibDataBroker-1.1")
-local dataobj = ldb:GetDataObjectByName("DungeonTimer") or ldb:NewDataObject("DungeonTimer", {type = "launcher", icon = "Interface\\Icons\\Spell_Nature_GroundingTotem"})
-dataobj.OnClick = SlashCmdList.DUNGEONTIMER
-]]
+-- LDB Tooltip
+dataobj.OnTooltipShow = function(self)
+	self:AddLine("DungeonTimer")
+	for k,v in pairs(db) do
+		self:AddDoubleLine(k, FormatTimeSpanLong(v), 1,1,1, 1,1,1)
+	end
+end
+
 

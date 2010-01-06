@@ -16,7 +16,4 @@ libs/CallbackHandler-1.0.lua
 libs/LibDataBroker-1.1.lua
 libs/tekKonfigAboutPanel.lua
 
-libs/LibBabble-3.0.lua
-libs/LibBabble-Zone-3.0.lua
-
 DungeonTimer.lua

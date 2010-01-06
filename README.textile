@@ -8,10 +8,9 @@ The timer is started when you first enter combat and is stopped when you kill th
 of the instance.
 
 TODO:
-* Replace the stopwatch-based timer with an internal one
-* Track best and average times for each instance seen
-* Add a LDB plugin with a useful tooltip
+* Track average times for each instance seen
 * Add support for pre-LK instances
+* Track per character as opposed to globally
 
 h2. Bugs and Suggestions
 

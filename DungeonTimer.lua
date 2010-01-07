@@ -185,7 +185,7 @@ end
 
 -- Monster yell trap to see when we're done with the current instance
 function f:CHAT_MSG_MONSTER_YELL(event, msg, ...)
-	if instanceInfo[timerZone].text == msg then
+	if string.find(instanceInfo[timerZone].text,msg) then
 		Print("Final boss defeated!")
 		self:StopTimer()
 		self:UnregisterEvent("CHAT_MSG_MONSTER_YELL")

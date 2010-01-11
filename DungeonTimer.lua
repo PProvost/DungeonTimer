@@ -101,13 +101,21 @@ function f:PLAYER_LOGIN()
 end
 
 function f:ZONE_CHANGED_NEW_AREA()
-	-- If we're already timing, bail
-	if timerStarted then return end
-
 	local zone = GetRealZoneText()
+	local _, type, difficulty, difficultyName = GetInstanceInfo()
 	if zone==nil or zone=="" then return  end -- TODO: try again in 5 sec
 
-	local _, type, difficulty, difficultyName = GetInstanceInfo()
+	-- If we're already timing, bail
+	if timerStarted then 
+		if type == "party" and zone ~= timerZone then
+			-- we're in a new instance zone, cancel the old time without saving
+			StopTimer(true)
+		else
+			return -- Bail out... we're still in the same place... prob just died and ran back
+		end
+	end
+
+
 	if type == "party" then
 		timerZone = zone
 		if instanceInfo[timerZone] then
@@ -154,17 +162,21 @@ function f:PLAYER_REGEN_DISABLED()
 	end
 end
 
-function f:StopTimer()
+function f:StopTimer(abandoned)
 	local elapsedTime = time() - startTime
 
 	self:SetScript("OnUpdate", nil)
 
-	local name, type, difficulty, difficultyName = GetInstanceInfo()
-	local key = name.." - "..difficultyName
-	if not db[key] or elapsedTime < db[key] then
-		db[key] = elapsedTime
+	if abandoned then
+		Print("Instance abandoned. Time spent: " .. FormatTimeSpanLong(elapsedTime))
+	else
+		local name, type, difficulty, difficultyName = GetInstanceInfo()
+		local key = name.." - "..difficultyName
+		if not db[key] or elapsedTime < db[key] then
+			db[key] = elapsedTime
+		end
+		Print("Elapsed time: " .. FormatTimeSpanLong(elapsedTime))
 	end
-	Print("Elapsed time: " .. FormatTimeSpanLong(elapsedTime))
 
 	timerStarted = nil
 	timerZone = nil

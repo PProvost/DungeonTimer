@@ -237,7 +237,7 @@ dataobj.OnTooltipShow = function(self)
 	local r,g,b = 1,1,1
 	self:AddLine("DungeonTimer")
 	for k,v in pairsByKeys(db) do
-		if k = timerZone then b = 0 end
+		if k == timerZone then b = 0 end
 		self:AddDoubleLine(k, FormatTimeSpanLong(v), r,g,b, r,g,b)
 	end
 	self:AddLine("Hint: While the timer is running, click to report current elapsed time to party chat.", 0,1,0, true)

@@ -7,10 +7,12 @@ tool in game.
 The timer is started when you first enter combat and is stopped when you kill the final boss
 of the instance.
 
+Best times are stored per-character.
+
 TODO:
 * Track average times for each instance seen
 * Add support for pre-LK instances
-* Track per character as opposed to globally
+* Enable display of best time for the instance, and which char did it
 
 h2. Bugs and Suggestions
 

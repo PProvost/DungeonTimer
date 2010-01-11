@@ -38,7 +38,7 @@ local instanceInfo = {
 local function Print(...) print("|cFF33FF99DungeonTimer|r:", ...) end
 local debugf = tekDebug and tekDebug:GetFrame("DungeonTimer")
 local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end end
-local function PartySay(msg) SendChatMessage("DungeonTimer: " .. msg, "PARTY")
+local function PartySay(msg) SendChatMessage("DungeonTimer: " .. msg, "PARTY") end
 
 -- Locals
 local timerStarted = nil

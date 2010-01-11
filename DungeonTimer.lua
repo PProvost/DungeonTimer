@@ -54,6 +54,21 @@ f:RegisterEvent("ADDON_LOADED")
 local ldb = LibStub:GetLibrary("LibDataBroker-1.1")
 local dataobj = ldb:GetDataObjectByName("DungeonTimer") or ldb:NewDataObject("DungeonTimer", {type = "data source", icon = "Interface\\Icons\\INV_Misc_Head_ClockworkGnome_01", text="0:00" })
 
+-- Iterator function that returns them sorted by key
+local function pairsByKeys (t, f)
+      local a = {}
+      for n in pairs(t) do table.insert(a, n) end
+      table.sort(a, f)
+      local i = 0      -- iterator variable
+      local iter = function ()   -- iterator function
+        i = i + 1
+        if a[i] == nil then return nil
+        else return a[i], t[a[i]]
+        end
+      end
+      return iter
+    end
+
 local function FormatTimeSpanLong(totalSeconds)
 	local secs = totalSeconds % 60
 	local mins = math.floor(totalSeconds / 60)
@@ -76,7 +91,6 @@ local function FormatTimeSpanShort(totalSeconds)
 	end
 end
 
-
 function f:ADDON_LOADED(event, addon)
 	if addon:lower() ~= "dungeontimer" then return end
 
@@ -85,8 +99,6 @@ function f:ADDON_LOADED(event, addon)
 	DungeonTimerDB[realm] = DungeonTimerDB[realm] or {}
 	DungeonTimerDB[realm][name] = DungeonTimerDB[realm][name] or {}
 	db = DungeonTimerDB[realm][name]
-
-	-- Do anything you need to do after addon has loaded
 
 	LibStub("tekKonfig-AboutPanel").new(nil, "DungeonTimer") -- Make first arg nil if no parent config panel
 	self:UnregisterEvent("ADDON_LOADED")
@@ -97,11 +109,11 @@ end
 
 function f:PLAYER_LOGIN()
 	self:RegisterEvent("PLAYER_LOGOUT")
+	self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+	self:UnregisterEvent("PLAYER_LOGIN")
 
-	f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 	self:ZONE_CHANGED_NEW_AREA()
 
-	self:UnregisterEvent("PLAYER_LOGIN")
 	self.PLAYER_LOGIN = nil
 end
 
@@ -114,7 +126,7 @@ function f:ZONE_CHANGED_NEW_AREA()
 	if timerStarted then 
 		if type == "party" and zone ~= timerZone then
 			-- we're in a new instance zone, cancel the old time without saving
-			StopTimer(true)
+			self:StopTimer(true)
 		else
 			return -- Bail out... we're still in the same place... prob just died and ran back
 		end
@@ -224,7 +236,7 @@ dataobj.OnClick = SlashCmdList.DUNGEONTIMER
 dataobj.OnTooltipShow = function(self)
 	local r,g,b = 1,1,1
 	self:AddLine("DungeonTimer")
-	for k,v in pairs(db) do
+	for k,v in pairsByKeys(db) do
 		if k = timerZone then b = 0 end
 		self:AddDoubleLine(k, FormatTimeSpanLong(v), r,g,b, r,g,b)
 	end

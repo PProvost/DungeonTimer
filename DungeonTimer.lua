@@ -15,6 +15,7 @@ Copyright 2009 Peter Provost (Quaiche of Dragonblight)
 ]]
 
 local instanceInfo = {
+	-- Lich King 5-mans
 	["Ahn'kahet: The Old Kingdom"] 	= { type="bosskill", id=29311, },
 	["Azjol-Nerub"] 								= { type="bosskill", id=29120, },
 	["Drak'Tharon Keep"] 						= { type="bosskill", id=26632, },
@@ -37,6 +38,7 @@ local instanceInfo = {
 local function Print(...) print("|cFF33FF99DungeonTimer|r:", ...) end
 local debugf = tekDebug and tekDebug:GetFrame("DungeonTimer")
 local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end end
+local function PartySay(msg) SendChatMessage("DungeonTimer: " .. msg, "PARTY")
 
 -- Locals
 local timerStarted = nil
@@ -166,9 +168,8 @@ function f:PLAYER_REGEN_DISABLED()
 end
 
 function f:StopTimer(abandoned)
-	local elapsedTime = time() - startTime
-
 	self:SetScript("OnUpdate", nil)
+	local elapsedTime = time() - startTime
 
 	if abandoned then
 		Print("Instance abandoned. Time spent: " .. FormatTimeSpanLong(elapsedTime))
@@ -177,8 +178,9 @@ function f:StopTimer(abandoned)
 		local key = name.." - "..difficultyName
 		if not db[key] or elapsedTime < db[key] then
 			db[key] = elapsedTime
+			PartySay("New record established for "..timerZone)
 		end
-		Print("Elapsed time: " .. FormatTimeSpanLong(elapsedTime))
+		PartySay("Elapsed time: " .. FormatTimeSpanLong(elapsedTime))
 	end
 
 	timerStarted = nil
@@ -211,18 +213,21 @@ SLASH_DUNGEONTIMER1 = "/dtimer"
 SlashCmdList.DUNGEONTIMER = function(msg)
 	if timerStarted then
 		local elapsedTime = time() - startTime
-		Print(timerZone.." elapsed time: " .. FormatTimeSpanLong(elapsedTime))
+		PartySay(timerZone.." elapsed time - " .. FormatTimeSpanLong(elapsedTime))
 	else
 		Print("Timer not started!")
 	end
 end
+dataobj.OnClick = SlashCmdList.DUNGEONTIMER
 
 -- LDB Tooltip
 dataobj.OnTooltipShow = function(self)
+	local r,g,b = 1,1,1
 	self:AddLine("DungeonTimer")
 	for k,v in pairs(db) do
-		self:AddDoubleLine(k, FormatTimeSpanLong(v), 1,1,1, 1,1,1)
+		if k = timerZone then b = 0 end
+		self:AddDoubleLine(k, FormatTimeSpanLong(v), r,g,b, r,g,b)
 	end
+	self:AddLine("Hint: While the timer is running, click to report current elapsed time to party chat.", 0,1,0, true)
 end
-
 

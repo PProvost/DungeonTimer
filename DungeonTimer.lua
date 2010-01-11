@@ -78,8 +78,11 @@ end
 function f:ADDON_LOADED(event, addon)
 	if addon:lower() ~= "dungeontimer" then return end
 
+	local realm, name = GetRealmName(), UnitName('player')
 	DungeonTimerDB = setmetatable(DungeonTimerDB or {}, {__index = defaults})
-	db = DungeonTimerDB
+	DungeonTimerDB[realm] = DungeonTimerDB[realm] or {}
+	DungeonTimerDB[realm][name] = DungeonTimerDB[realm][name] or {}
+	db = DungeonTimerDB[realm][name]
 
 	-- Do anything you need to do after addon has loaded
 

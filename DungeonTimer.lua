@@ -56,18 +56,18 @@ local dataobj = ldb:GetDataObjectByName("DungeonTimer") or ldb:NewDataObject("Du
 
 -- Iterator function that returns them sorted by key
 local function pairsByKeys (t, f)
-      local a = {}
-      for n in pairs(t) do table.insert(a, n) end
-      table.sort(a, f)
-      local i = 0      -- iterator variable
-      local iter = function ()   -- iterator function
-        i = i + 1
-        if a[i] == nil then return nil
-        else return a[i], t[a[i]]
-        end
-      end
-      return iter
-    end
+	local a = {}
+	for n in pairs(t) do table.insert(a, n) end
+	table.sort(a, f)
+	local i = 0      -- iterator variable
+	local iter = function ()   -- iterator function
+		i = i + 1
+		if a[i] == nil then return nil
+		else return a[i], t[a[i]]
+		end
+	end
+	return iter
+end
 
 local function FormatTimeSpanLong(totalSeconds)
 	local secs = totalSeconds % 60
@@ -123,17 +123,10 @@ function f:ZONE_CHANGED_NEW_AREA()
 	if zone==nil or zone=="" then return  end -- TODO: try again in 5 sec
 
 	-- If we're already timing, bail
-	if timerStarted then 
-		if type == "party" and zone ~= timerZone then
+	if timerStarted and type == "party" and zone ~= timerZone then
 			-- we're in a new instance zone, cancel the old time without saving
 			self:StopTimer(true)
-		else
-			return -- Bail out... we're still in the same place... prob just died and ran back
-		end
-	end
-
-
-	if type == "party" then
+	elseif type == "party" then
 		timerZone = zone
 		if instanceInfo[timerZone] then
 			Print("You have entered " .. difficultyName .. " " .. zone .. ".")
@@ -150,7 +143,7 @@ local total = 0
 function f:OnUpdate(elapsed)
 	total = total + elapsed
 	if total >= 1 then
-		dataobj.text = FormatTimeSpanShort(time() - startTime) -- TODO: better format than this
+		dataobj.text = FormatTimeSpanShort(time() - startTime)
 		total = 0
 	end
 end
@@ -199,13 +192,13 @@ function f:StopTimer(abandoned)
 	timerZone = nil
 end
 
--- Boss trap to see when we're done with the current instance
+-- Combat log trap to see when we're done with the current instance
 function f:COMBAT_LOG_EVENT_UNFILTERED(event, ...)
 	local timestamp, type, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags = select(1, ...)
 	if type=="UNIT_DIED" then
 		local id = tonumber((destGUID):sub(-12, -7), 16)
 		if instanceInfo[timerZone].id == id then
-			Print("Final boss dead! " ..tostring(destName))
+			Print("Final boss killed! " ..tostring(destName))
 			self:StopTimer()
 			self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 		end

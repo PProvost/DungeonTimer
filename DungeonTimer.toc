@@ -2,7 +2,7 @@
 ## Title: DungeonTimer
 ## Notes: Template for creating new addons
 ## Author: Quaiche
-## Version: Alpha
+## Version: $project-version$
 ## X-Category: Misc
 ## SavedVariables: DungeonTimerDB
 ## OptionalDeps: tekDebug, tekErr
@@ -11,9 +11,9 @@
 ## LoadManagers: AddonLoader
 ## X-LoadOn-Always: delayed
 
-libs/LibStub.lua
-libs/CallbackHandler-1.0.lua
-libs/LibDataBroker-1.1.lua
-libs/tekKonfigAboutPanel.lua
+libs\LibStub.lua
+libs\CallbackHandler-1.0.lua
+libs\LibDataBroker-1.1.lua
+libs\tekKonfigAboutPanel.lua
 
 DungeonTimer.lua

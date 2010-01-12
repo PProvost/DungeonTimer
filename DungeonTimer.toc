@@ -2,7 +2,7 @@
 ## Title: DungeonTimer
 ## Notes: Template for creating new addons
 ## Author: Quaiche
-## Version: $project-version$
+## Version: @project-version@
 ## X-Category: Misc
 ## SavedVariables: DungeonTimerDB
 ## OptionalDeps: tekDebug, tekErr

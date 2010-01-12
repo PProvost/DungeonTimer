@@ -9,10 +9,12 @@ of the instance.
 
 Best times are stored per-character.
 
+Comes with a LibDataBroker data source that displays the elapsed time on your NinjaPanel, ChocolateBar or other display. Clicking on the LDB panel will send the current elapsed time to your party. The LDB tooltip shows your current best instance times, sorted by instance name.
+
 TODO:
 * Track average times for each instance seen
 * Add support for pre-LK instances
-* Enable display of best time for the instance, and which char did it
+* Enable display of best time for the instance when that best is another toon
 
 h2. Bugs and Suggestions
 

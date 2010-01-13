@@ -117,15 +117,28 @@ function f:PLAYER_LOGIN()
 	self.PLAYER_LOGIN = nil
 end
 
+StaticPopupDialogs["DUNGEON_TIMER_STOPCONFIRM"] = {
+	text = "You have left the instance, do you want to abort the timer?",
+	button1 = "Yes",
+	button2 = "No",
+	OnAccept = function()
+		f:StopTimer(true)
+	end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = false,
+	enterClicksFirstButton = true,
+}
+
 function f:ZONE_CHANGED_NEW_AREA()
 	local zone = GetRealZoneText()
 	local _, type, difficulty, difficultyName = GetInstanceInfo()
 	if zone==nil or zone=="" then return  end -- TODO: try again in 5 sec
 
-	-- If we're already timing, bail
-	if timerStarted and type == "party" and zone ~= timerZone then
-			-- we're in a new instance zone, cancel the old time without saving
-			self:StopTimer(true)
+	-- If we're already timing, prompt the user to cancel the timer
+	-- TODO: If I die, release, and spirit-rez, this won't work I think
+	if timerStarted and type == "party" and zone ~= timerZone and not UnitIsDeadOrGhost('player') then
+			StaticPopup_Show("DUNGEON_TIMER_STOPCONFIRM")
 	elseif type == "party" then
 		timerZone = zone
 		if instanceInfo[timerZone] then

@@ -134,14 +134,14 @@ function f:ZONE_CHANGED_NEW_AREA()
 	if UnitIsDeadOrGhost('player') then return end
 
 	local zone = GetRealZoneText()
-	local _, type, difficulty, difficultyName = GetInstanceInfo()
-	if zone==nil or zone=="" then return  end -- TODO: try again in 5 sec
+	if zone==nil or zone=="" or zone==timerZone then return end
 
-	-- If we're already timing, prompt the user to cancel the timer
-	-- TODO: If I die, release, and spirit-rez, I think this won't work
-	if timerStarted and type == "party" and zone ~= timerZone then
-			StaticPopup_Show("DUNGEON_TIMER_STOPCONFIRM")
-	elseif type == "party" then
+	local _, type, difficulty, difficultyName = GetInstanceInfo()
+	if type ~= "party" then return end
+
+	if timerStarted then
+		StaticPopup_Show("DUNGEON_TIMER_STOPCONFIRM")
+	else
 		timerZone = zone
 		if instanceInfo[timerZone] then
 			Print("You have entered " .. difficultyName .. " " .. zone .. ".")

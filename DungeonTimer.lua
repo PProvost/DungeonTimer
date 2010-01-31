@@ -14,31 +14,7 @@ Copyright 2009 Peter Provost (Quaiche of Dragonblight)
    limitations under the License.
 ]]
 
-local instanceInfo = {
-	-- Lich King 5-mans
-	["Ahn'kahet: The Old Kingdom"] = { type="bosskill", id=29311, },
-	["Azjol-Nerub"] = { type="bosskill", id=29120, },
-	["Drak'Tharon Keep"] = { type="bosskill", id=26632, },
-	["Gundrak"] = { type="bosskill", id=29306, },
-	["Halls of Lightning"] = { type="bosskill", id=28923 },
-	["Halls of Reflection"] = { type="emote", text="Nowhere to run... You're mine now!" },
-	["Halls of Stone"] = { type="bosskill", id=27978 },
-	["Pit of Saron"] = { type="bosskill", id=36658 },
-	["The Culling of Stratholme"] = { type="emote", text="Your journey has just begun" },
-	["The Forge of Souls"] = { type="bosskill", id=36502 },
-	["The Nexus"] = { type="bosskill", id=26723 },
-	["The Oculus"] = { type="bosskill", id=27656 },
-	["The Violet Hold"] = { type="bosskill", id=31134 },
-	["Trial of the Champion"] = { type="emote", text="No! I must not fail... again..." },
-	["Utgarde Keep"] = { type="emote", text="No! I can do... better! I can..." },
-	["Utgarde Pinnacle"] = { type="bosskill", id=26861 },
-}
-
--- Debug stuff
-local function Print(...) print("|cFF33FF99DungeonTimer|r:", ...) end
-local debugf = tekDebug and tekDebug:GetFrame("DungeonTimer")
-local function Debug(...) if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end end
-local function PartySay(msg) SendChatMessage("DungeonTimer: " .. msg, "PARTY") end
+local addonName, ns = ...
 
 -- Locals
 local timerStarted = nil
@@ -53,43 +29,6 @@ f:RegisterEvent("ADDON_LOADED")
 
 local ldb = LibStub:GetLibrary("LibDataBroker-1.1")
 local dataobj = ldb:GetDataObjectByName("DungeonTimer") or ldb:NewDataObject("DungeonTimer", {type = "data source", icon = "Interface\\Icons\\INV_Misc_Head_ClockworkGnome_01", text="0:00" })
-
--- Iterator function that returns them sorted by key
-local function pairsByKeys (t, f)
-	local a = {}
-	for n in pairs(t) do table.insert(a, n) end
-	table.sort(a, f)
-	local i = 0      -- iterator variable
-	local iter = function ()   -- iterator function
-		i = i + 1
-		if a[i] == nil then return nil
-		else return a[i], t[a[i]]
-		end
-	end
-	return iter
-end
-
-local function FormatTimeSpanLong(totalSeconds)
-	local secs = totalSeconds % 60
-	local mins = math.floor(totalSeconds / 60)
-	local hours = math.floor(totalSeconds / 3600)
-	if hours > 0 then 
-		return string.format("%d hours, %d mins, %d secs", hours, mins, secs)
-	else
-		return string.format("%d mins, %d secs", mins, secs)
-	end
-end
-
-local function FormatTimeSpanShort(totalSeconds)
-	local secs = totalSeconds % 60
-	local mins = math.floor(totalSeconds / 60)
-	local hours = math.floor(totalSeconds / 3600)
-	if hours > 0 then 
-		return string.format("%d:%02d:%02d", hours, mins, secs)
-	else
-		return string.format("%d:%02d", mins, secs)
-	end
-end
 
 function f:ADDON_LOADED(event, addon)
 	if addon:lower() ~= "dungeontimer" then return end
@@ -112,10 +51,17 @@ function f:PLAYER_LOGIN()
 	self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 	self:UnregisterEvent("PLAYER_LOGIN")
 
+	-- Testing out some stuff with the LFG system
+	self:RegisterEvent("LFG_UPDATE")
+	self:RegisterEvent("LFG_COMPLETION_REWARD")
+
 	self:ZONE_CHANGED_NEW_AREA()
 
 	self.PLAYER_LOGIN = nil
 end
+
+function f:LFG_UPDATE(event, ...) ns.Debug("LFG_UPDATE", ...) end
+function f:LFG_COMPLETION_REWARD(event, ...) ns.Debug("LFG_UPDATE", ...) end
 
 StaticPopupDialogs["DUNGEON_TIMER_STOPCONFIRM"] = {
 	text = "You have left the instance, do you want to abort the timer?",
@@ -131,25 +77,30 @@ StaticPopupDialogs["DUNGEON_TIMER_STOPCONFIRM"] = {
 }
 
 function f:ZONE_CHANGED_NEW_AREA()
-	if UnitIsDeadOrGhost('player') then return end
+	if UnitIsDeadOrGhost('player') then 
+		ns.Debug("ZONE_CHANGED_NEW_AREA - Player is dead or ghost!")
+		return 
+	end
 
 	local zone = GetRealZoneText()
-	if zone==nil or zone=="" or zone==timerZone then return end
+	if zone==nil or zone=="" or zone==timerZone then 
+		ns.Debug("ZONE_CHANGED_NEW_AREA - zone is nil")
+		return 
+	end
 
 	local _, type, difficulty, difficultyName = GetInstanceInfo()
-	if type ~= "party" then return end
-
 	if timerStarted then
 		StaticPopup_Show("DUNGEON_TIMER_STOPCONFIRM")
 	else
 		timerZone = zone
-		if instanceInfo[timerZone] then
-			Print("You have entered " .. difficultyName .. " " .. zone .. ".")
-			Print("Timer will start as soon as you enter combat.")
-			dataobj.text = "0:00"
+		dataobj.text = "0:00"
+		if ns.InstanceInfo[timerZone] then
+			ns.Print("You have entered " .. difficultyName .. " " .. zone .. ".")
+			ns.Print("Timer will start as soon as you enter combat.")
 			self:RegisterEvent("PLAYER_REGEN_DISABLED")
 		else
-			Print("Unknown instance! Timer disabled")
+			ns.Print("Unknown instance! Timer disabled")
+			self:UnregisterEvent("PLAYER_REGEN_DISABLED")
 		end
 	end
 end
@@ -158,7 +109,7 @@ local total = 0
 function f:OnUpdate(elapsed)
 	total = total + elapsed
 	if total >= 1 then
-		dataobj.text = FormatTimeSpanShort(time() - startTime)
+		dataobj.text = ns.FormatTimeSpanShort(time() - startTime)
 		total = 0
 	end
 end
@@ -171,19 +122,19 @@ function f:PLAYER_REGEN_DISABLED()
 	-- Start the timer!
 	timerStarted = true
 	startTime = time()
-	Print("Timer started!")
+	ns.Print("Timer started!")
 
 	-- Enable the LDB text update
 	self:SetScript("OnUpdate", self.OnUpdate)
 
-	if instanceInfo[timerZone].type == "bosskill" then
+	if ns.InstanceInfo[timerZone].type == "bosskill" then
 		-- Watch the combat log for the death of the boss
 		self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	elseif instanceInfo[timerZone].type == "emote" then
+	elseif ns.InstanceInfo[timerZone].type == "emote" then
 		-- This one is for emotes
 		self:RegisterEvent("CHAT_MSG_MONSTER_YELL")
 	else
-		Print("Unknown instance conclusion type. Please contact the addon developer.")
+		ns.Print("Unknown instance conclusion type. Please contact the addon developer.")
 	end
 end
 
@@ -192,15 +143,15 @@ function f:StopTimer(abandoned)
 	local elapsedTime = time() - startTime
 
 	if abandoned then
-		Print("Instance abandoned. Time spent: " .. FormatTimeSpanLong(elapsedTime))
+		ns.Print("Instance abandoned. Time spent: " .. ns.FormatTimeSpanLong(elapsedTime))
 	else
 		local name, type, difficulty, difficultyName = GetInstanceInfo()
 		local key = name.." - "..difficultyName
 		if not db[key] or elapsedTime < db[key] then
 			db[key] = elapsedTime
-			PartySay("New record established for "..timerZone)
+			ns.Print("New record established for "..timerZone)
 		end
-		PartySay("Elapsed time: " .. FormatTimeSpanLong(elapsedTime))
+		ns.PartySay("Elapsed time: " .. ns.FormatTimeSpanLong(elapsedTime))
 	end
 
 	timerStarted = nil
@@ -212,8 +163,8 @@ function f:COMBAT_LOG_EVENT_UNFILTERED(event, ...)
 	local timestamp, type, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags = select(1, ...)
 	if type=="UNIT_DIED" then
 		local id = tonumber((destGUID):sub(-12, -7), 16)
-		if instanceInfo[timerZone].id == id then
-			Print("Final boss killed! " ..tostring(destName))
+		if ns.InstanceInfo[timerZone].id == id then
+			ns.Print("Final boss killed! " ..tostring(destName))
 			self:StopTimer()
 			self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 		end
@@ -222,8 +173,8 @@ end
 
 -- Monster yell trap to see when we're done with the current instance
 function f:CHAT_MSG_MONSTER_YELL(event, msg, ...)
-	if string.find(instanceInfo[timerZone].text,msg) then
-		Print("Final boss defeated!")
+	if string.find(ns.InstanceInfo[timerZone].text,msg) then
+		ns.Print("Final boss defeated!")
 		self:StopTimer()
 		self:UnregisterEvent("CHAT_MSG_MONSTER_YELL")
 	end
@@ -233,9 +184,9 @@ SLASH_DUNGEONTIMER1 = "/dtimer"
 SlashCmdList.DUNGEONTIMER = function(msg)
 	if timerStarted then
 		local elapsedTime = time() - startTime
-		PartySay(timerZone.." elapsed time - " .. FormatTimeSpanLong(elapsedTime))
+		ns.PartySay(timerZone.." elapsed time - " .. ns.FormatTimeSpanLong(elapsedTime))
 	else
-		Print("Timer not started!")
+		ns.Print("Timer not started!")
 	end
 end
 dataobj.OnClick = SlashCmdList.DUNGEONTIMER
@@ -244,9 +195,9 @@ dataobj.OnClick = SlashCmdList.DUNGEONTIMER
 dataobj.OnTooltipShow = function(self)
 	local r,g,b = 1,1,1
 	self:AddLine("DungeonTimer")
-	for k,v in pairsByKeys(db) do
+	for k,v in ns.PairsByKeys(db) do
 		if k == timerZone then b = 0 end
-		self:AddDoubleLine(k, FormatTimeSpanLong(v), r,g,b, r,g,b)
+		self:AddDoubleLine(k, ns.FormatTimeSpanLong(v), r,g,b, r,g,b)
 	end
 	self:AddLine("Hint: While the timer is running, click to report current elapsed time to party chat.", 0,1,0, true)
 end

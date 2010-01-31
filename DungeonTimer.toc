@@ -16,4 +16,6 @@ libs\CallbackHandler-1.0.lua
 libs\LibDataBroker-1.1.lua
 libs\tekKonfigAboutPanel.lua
 
+InstanceInfo.lua
+Utils.lua
 DungeonTimer.lua

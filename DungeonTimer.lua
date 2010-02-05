@@ -84,11 +84,16 @@ function f:ZONE_CHANGED_NEW_AREA()
 
 	local zone = GetRealZoneText()
 	if zone==nil or zone=="" or zone==timerZone then 
-		ns.Debug("ZONE_CHANGED_NEW_AREA - zone is nil")
+		ns.Debug("ZONE_CHANGED_NEW_AREA - zone is nil, \"\" or timerZone")
 		return 
 	end
 
 	local _, type, difficulty, difficultyName = GetInstanceInfo()
+	if type ~= "party" then
+		ns.Debug("ZONE_CHANGED_NEW_AREA - not in party")
+		return
+	end
+
 	if timerStarted then
 		StaticPopup_Show("DUNGEON_TIMER_STOPCONFIRM")
 	else

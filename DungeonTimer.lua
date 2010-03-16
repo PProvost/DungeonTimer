@@ -156,7 +156,7 @@ function f:StopTimer(abandoned)
 			db[key] = elapsedTime
 			ns.Print("New record established for "..timerZone)
 		end
-		ns.PartySay("Elapsed time: " .. ns.FormatTimeSpanLong(elapsedTime))
+		-- ns.PartySay("Elapsed time: " .. ns.FormatTimeSpanLong(elapsedTime))
 	end
 
 	timerStarted = nil
